@@ -22,6 +22,14 @@ local function newCPU()
     return cpu, bus
 end
 
+-- Place test programs at the real DMG reset address (0x0100).
+local function loadProgram(bus, bytes)
+    local rom = {}
+    for i = 0, 0xFF do rom[i + 1] = 0x00 end
+    for i, byte in ipairs(bytes) do rom[0x100 + i] = byte end
+    bus:loadROM(rom)
+end
+
 -- 1. Register initialization
 do
     local cpu = newCPU()
@@ -44,7 +52,7 @@ end
 -- 3. LD immediate
 do
     local cpu, bus = newCPU()
-    bus:loadROM({0x3E, 0x42, 0x06, 0x11, 0x0E, 0x22})
+    loadProgram(bus, {0x3E, 0x42, 0x06, 0x11, 0x0E, 0x22})
     cpu:step(); cpu:step(); cpu:step()
     ok("LD immediate", cpu.a == 0x42 and cpu.b == 0x11 and cpu.c == 0x22)
 end
@@ -52,7 +60,7 @@ end
 -- 4. LD/ALU
 do
     local cpu, bus = newCPU()
-    bus:loadROM({0x3E, 0x10, 0x06, 0x05, 0x80})
+    loadProgram(bus, {0x3E, 0x10, 0x06, 0x05, 0x80})
     cpu:step(); cpu:step(); cpu:step()
     ok("ADD A,B", cpu.a == 0x15 and not cpu:flag(0x80) and not cpu:flag(0x40))
 end
@@ -60,7 +68,7 @@ end
 -- 5. SUB
 do
     local cpu, bus = newCPU()
-    bus:loadROM({0x3E, 0x10, 0x06, 0x05, 0x90})
+    loadProgram(bus, {0x3E, 0x10, 0x06, 0x05, 0x90})
     cpu:step(); cpu:step(); cpu:step()
     ok("SUB B", cpu.a == 0x0B and cpu:flag(0x40))
 end
@@ -68,7 +76,7 @@ end
 -- 6. Jump
 do
     local cpu, bus = newCPU()
-    bus:loadROM({0xC3, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x77})
+    loadProgram(bus, {0xC3, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x77})
     cpu:step()
     ok("JP nn", cpu.pc == 0x0108)
     cpu:step()
@@ -78,7 +86,7 @@ end
 -- 7. Call/return + stack
 do
     local cpu, bus = newCPU()
-    bus:loadROM({0xCD, 0x06, 0x01, 0x00, 0x00, 0x00, 0x3E, 0x55, 0xC9})
+    loadProgram(bus, {0xCD, 0x06, 0x01, 0x00, 0x00, 0x00, 0x3E, 0x55, 0xC9})
     cpu:step()
     ok("CALL pushes return", cpu.sp == 0xFFFC and bus:read8(0xFFFC) == 0x03)
     cpu:step()
@@ -91,7 +99,7 @@ end
 do
     local cpu, bus = newCPU()
     cpu:setBC(0x1234)
-    bus:loadROM({0xC5, 0x01, 0x00, 0xC1})
+    loadProgram(bus, {0xC5, 0x01, 0x00, 0xC1})
     cpu:step()
     cpu:setBC(0)
     cpu:step()
@@ -102,7 +110,7 @@ end
 -- 9. HALT
 do
     local cpu, bus = newCPU()
-    bus:loadROM({0x76, 0x3E, 0x99})
+    loadProgram(bus, {0x76, 0x3E, 0x99})
     cpu:step()
     local pc = cpu.pc
     cpu:step()
