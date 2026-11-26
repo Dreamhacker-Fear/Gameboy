@@ -6,7 +6,7 @@ local Bus = {}
 Bus.__index = Bus
 
 local function u8(v) return v % 0x100 end
-local function u16(v) return v % 0x10000
+local function u16(v) return v % 0x10000 end
 
 function Bus.new(rom)
     local self = setmetatable({}, Bus)
